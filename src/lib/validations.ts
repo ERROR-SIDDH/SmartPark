@@ -28,12 +28,25 @@ export const parkingGroundSchema = z.object({
     allowedVehicleTypes: z.array(z.enum(['car', 'bike', 'pickup', 'ev'])).optional(),
 });
 
+export const drawingShapeSchema = z.object({
+    type: z.enum(['line', 'rect', 'arc', 'freehand']),
+    points: z.array(z.number()),
+    color: z.string().optional(),
+    lineWidth: z.number().optional(),
+    fill: z.string().optional(),
+});
+
 export const slotSchema = z.object({
     parkingGroundId: z.string().min(1),
     slotNumber: z.string().min(1),
     vehicleType: z.enum(['car', 'bike', 'pickup', 'ev']),
     position: z.object({ x: z.number(), y: z.number() }),
     dimensions: z.object({ width: z.number(), height: z.number() }),
+    realDimensions: z.object({
+        length: z.number().min(50).max(2000),
+        width: z.number().min(30).max(1000),
+    }).optional(),
+    clearance: z.number().min(0).max(200).optional(),
     rotation: z.number().optional(),
     row: z.string().optional(),
     isEV: z.boolean().optional(),
@@ -50,6 +63,10 @@ export const vehicleSchema = z.object({
     vehicleType: z.enum(['car', 'bike', 'pickup', 'ev']),
     color: z.string().optional(),
     model: z.string().optional(),
+    dimensions: z.object({
+        length: z.number().min(50).max(2000),
+        width: z.number().min(30).max(1000),
+    }).optional(),
     isDefault: z.boolean().optional(),
 });
 

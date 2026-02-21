@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Booking from '@/lib/models/Booking';
 import Slot from '@/lib/models/Slot';
+import Vehicle from '@/lib/models/Vehicle';
 import { requireAuth, authenticateRequest } from '@/lib/auth';
 import { bookingSchema } from '@/lib/validations';
 
@@ -43,6 +44,25 @@ export async function POST(req: NextRequest) {
         }
 
         const { slotId, startTime, endTime } = parsed.data;
+
+        const slot = await Slot.findById(slotId);
+        if (!slot) return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
+
+        const vehicle = await Vehicle.findById(parsed.data.vehicleId);
+        if (!vehicle) return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
+
+        // Size validation
+        if (slot.realDimensions && vehicle.dimensions) {
+            // Check if vehicle fits (requiring clearance on all sides might be too strict, usually it's length + clearance, width + clearance)
+            const requiredLength = vehicle.dimensions.length + slot.clearance;
+            const requiredWidth = vehicle.dimensions.width + slot.clearance;
+
+            if (requiredLength > slot.realDimensions.length || requiredWidth > slot.realDimensions.width) {
+                return NextResponse.json({
+                    error: `Vehicle size (${vehicle.dimensions.length}x${vehicle.dimensions.width}cm) + clearance (${slot.clearance}cm) exceeds slot limits (${slot.realDimensions.length}x${slot.realDimensions.width}cm).`
+                }, { status: 400 });
+            }
+        }
 
         // Check for conflicts
         const conflict = await Booking.findOne({

@@ -6,6 +6,10 @@ export interface IVehicle extends Document {
     vehicleType: 'car' | 'bike' | 'pickup' | 'ev';
     color: string;
     vehicleModel: string;
+    dimensions: {
+        length: number; // cm
+        width: number;  // cm
+    };
     isDefault: boolean;
     createdAt: Date;
 }
@@ -16,6 +20,10 @@ const VehicleSchema = new Schema<IVehicle>({
     vehicleType: { type: String, required: true, enum: ['car', 'bike', 'pickup', 'ev'] },
     color: { type: String, default: '' },
     vehicleModel: { type: String, default: '' },
+    dimensions: {
+        length: { type: Number, default: 450 }, // cm
+        width: { type: Number, default: 180 },  // cm
+    },
     isDefault: { type: Boolean, default: false },
 }, { timestamps: true });
 

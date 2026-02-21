@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { MapPin, Calendar, Clock, Loader2, CheckCircle, ArrowLeft, Car } from "lucide-react";
+import { MapPin, Calendar, Clock, Loader2, CheckCircle, ArrowLeft, Car, AlertCircle, Ruler } from "lucide-react";
 
 interface SlotData {
     _id: string;
@@ -17,9 +17,24 @@ interface SlotData {
     vehicleType: string;
     position: { x: number; y: number };
     dimensions: { width: number; height: number };
+    realDimensions?: { length: number; width: number };
+    clearance?: number;
     rotation: number;
     status: string;
     isEV: boolean;
+}
+
+interface DrawingShape {
+    id: string;
+    type: "line" | "rect" | "arc";
+    color: string;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    rotation?: number;
+    startAngle?: number;
+    endAngle?: number;
 }
 
 interface ParkingGround {
@@ -27,6 +42,7 @@ interface ParkingGround {
     name: string;
     address: string;
     layoutImage: string;
+    layoutDrawing?: DrawingShape[];
     slots: SlotData[];
 }
 
@@ -34,6 +50,7 @@ interface Vehicle {
     _id: string;
     vehicleNumber: string;
     vehicleType: string;
+    dimensions?: { length: number; width: number };
     isDefault: boolean;
 }
 
@@ -67,6 +84,27 @@ export default function BookSlotPage() {
     const [booked, setBooked] = useState(false);
     const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
     const [loading, setLoading] = useState(true);
+    const [sizeError, setSizeError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!selectedSlot || !selectedVehicle) {
+            setSizeError(null);
+            return;
+        }
+        const v = vehicles.find((vec) => vec._id === selectedVehicle);
+        if (v?.dimensions && selectedSlot.realDimensions) {
+            const clr = selectedSlot.clearance || 0;
+            const reqL = v.dimensions.length + clr;
+            const reqW = v.dimensions.width + clr;
+            if (reqL > selectedSlot.realDimensions.length || reqW > selectedSlot.realDimensions.width) {
+                setSizeError(`Vehicle + clearance (${reqL}x${reqW}cm) doesn't fit in slot (${selectedSlot.realDimensions.length}x${selectedSlot.realDimensions.width}cm)`);
+            } else {
+                setSizeError(null);
+            }
+        } else {
+            setSizeError(null);
+        }
+    }, [selectedSlot, selectedVehicle, vehicles]);
 
     useEffect(() => {
         Promise.all([
@@ -109,6 +147,30 @@ export default function BookSlotPage() {
             for (let y = 0; y < canvas.height; y += 30) {
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
+        }
+
+        // Draw architectural shapes
+        if (ground.layoutDrawing) {
+            ground.layoutDrawing.forEach(shape => {
+                ctx.save();
+                ctx.strokeStyle = shape.color;
+                ctx.lineWidth = 3;
+                if (shape.type === "line") {
+                    ctx.beginPath();
+                    ctx.moveTo(shape.x, shape.y);
+                    ctx.lineTo(shape.x + shape.w, shape.y + shape.h);
+                    ctx.stroke();
+                } else if (shape.type === "rect") {
+                    ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+                    ctx.fillStyle = shape.color + "20";
+                    ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
+                } else if (shape.type === "arc") {
+                    ctx.beginPath();
+                    ctx.arc(shape.x, shape.y, Math.abs(shape.w), shape.startAngle || 0, shape.endAngle || Math.PI, false);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            });
         }
 
         ground.slots?.forEach((slot) => {
@@ -177,7 +239,7 @@ export default function BookSlotPage() {
     };
 
     const handleBook = async () => {
-        if (!selectedSlot || !selectedVehicle) return;
+        if (!selectedSlot || !selectedVehicle || sizeError) return;
         setBooking(true);
         try {
             const startDateTime = new Date(`${date}T${startTime}:00`).toISOString();
@@ -325,9 +387,16 @@ export default function BookSlotPage() {
                                 </div>
                             </div>
 
+                            {sizeError && (
+                                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                    <span className="text-xs font-medium leading-relaxed">{sizeError}</span>
+                                </div>
+                            )}
+
                             <Button
-                                className="w-full bg-gradient-to-r from-chart-2 to-primary hover:opacity-90"
-                                disabled={!selectedSlot || !selectedVehicle}
+                                className="w-full bg-gradient-to-r from-chart-2 to-primary hover:opacity-90 disabled:opacity-50"
+                                disabled={!selectedSlot || !selectedVehicle || !!sizeError}
                                 onClick={() => setShowConfirm(true)}
                             >
                                 <Calendar className="mr-2 h-4 w-4" /> Book Slot

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
@@ -8,7 +8,7 @@ import { useThemeStore } from "@/store/themeStore";
 import { Button } from "@/components/ui/button";
 import {
     Home, Search, CalendarRange, Car, User,
-    LogOut, Sun, Moon, ParkingSquare,
+    LogOut, Sun, Moon, ParkingSquare, Loader2,
 } from "lucide-react";
 
 const navItems = [
@@ -24,12 +24,27 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     const { theme, toggleTheme } = useThemeStore();
     const router = useRouter();
     const pathname = usePathname();
+    const [hydrated, setHydrated] = useState(false);
+
+    // Wait for Zustand to hydrate from localStorage before checking auth
+    useEffect(() => { setHydrated(true); }, []);
 
     useEffect(() => {
-        if (!isAuthenticated || user?.role !== "USER") {
+        if (hydrated && (!isAuthenticated || user?.role !== "USER")) {
             router.push("/login");
         }
-    }, [isAuthenticated, user, router]);
+    }, [hydrated, isAuthenticated, user, router]);
+
+    if (!hydrated) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (!isAuthenticated || user?.role !== "USER") return null;
 
@@ -52,8 +67,8 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
                                 return (
                                     <Link key={item.href} href={item.href}>
                                         <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                                                ? "bg-primary/10 text-primary"
-                                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                            ? "bg-primary/10 text-primary"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                                             }`}>
                                             <item.icon className="h-4 w-4" />
                                             {item.label}
@@ -70,7 +85,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
                             <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8">
                                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { logout(); router.push("/"); }}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => { await logout(); router.push("/"); }}>
                                 <LogOut className="h-4 w-4" />
                             </Button>
                         </div>

@@ -15,7 +15,7 @@ interface AuthState {
     token: string | null;
     isAuthenticated: boolean;
     login: (user: User, token: string) => void;
-    logout: () => void;
+    logout: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -25,8 +25,12 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             isAuthenticated: false,
             login: (user, token) => set({ user, token, isAuthenticated: true }),
-            logout: () => {
-                fetch('/api/auth/logout', { method: 'POST' });
+            logout: async () => {
+                try {
+                    await fetch('/api/auth/logout', { method: 'POST' });
+                } catch (e) {
+                    console.error('Logout error:', e);
+                }
                 set({ user: null, token: null, isAuthenticated: false });
             },
         }),

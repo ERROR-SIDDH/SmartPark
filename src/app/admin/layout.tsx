@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
@@ -8,7 +8,7 @@ import { useThemeStore } from "@/store/themeStore";
 import { Button } from "@/components/ui/button";
 import {
     LayoutDashboard, ParkingSquare, Users, BarChart3,
-    LogOut, Sun, Moon, Car, ChevronRight,
+    LogOut, Sun, Moon, Car, ChevronRight, Loader2,
 } from "lucide-react";
 
 const navItems = [
@@ -23,12 +23,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const { theme, toggleTheme } = useThemeStore();
     const router = useRouter();
     const pathname = usePathname();
+    const [hydrated, setHydrated] = useState(false);
+
+    // Wait for Zustand to hydrate from localStorage before checking auth
+    useEffect(() => {
+        setHydrated(true);
+    }, []);
 
     useEffect(() => {
-        if (!isAuthenticated || user?.role !== "ADMIN") {
+        if (hydrated && (!isAuthenticated || user?.role !== "ADMIN")) {
             router.push("/admin-login");
         }
-    }, [isAuthenticated, user, router]);
+    }, [hydrated, isAuthenticated, user, router]);
+
+    // Show loading while Zustand is hydrating from localStorage
+    if (!hydrated) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (!isAuthenticated || user?.role !== "ADMIN") return null;
 
@@ -50,12 +68,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 <nav className="flex-1 p-4 space-y-1">
                     {navItems.map((item) => {
-                        const isActive = pathname === item.href;
+                        const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                         return (
                             <Link key={item.href} href={item.href}>
                                 <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${isActive
-                                        ? "bg-primary/10 text-primary border border-primary/20"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    ? "bg-primary/10 text-primary border border-primary/20"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                                     }`}>
                                     <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
                                     {item.label}
@@ -71,7 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {theme === "dark" ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
                         {theme === "dark" ? "Light Mode" : "Dark Mode"}
                     </Button>
-                    <Button variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive" onClick={() => { logout(); router.push("/"); }}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive" onClick={async () => { await logout(); router.push("/"); }}>
                         <LogOut className="mr-2 h-4 w-4" /> Sign Out
                     </Button>
                 </div>

@@ -5,7 +5,12 @@ export interface ISlot extends Document {
     slotNumber: string;
     vehicleType: 'car' | 'bike' | 'pickup' | 'ev';
     position: { x: number; y: number };
-    dimensions: { width: number; height: number };
+    dimensions: { width: number; height: number }; // pixel dimensions on canvas
+    realDimensions: {
+        length: number; // cm - real-world length
+        width: number;  // cm - real-world width
+    };
+    clearance: number; // cm - required gap around the slot
     rotation: number;
     row: string;
     status: 'available' | 'booked' | 'blocked';
@@ -24,8 +29,13 @@ const SlotSchema = new Schema<ISlot>({
     },
     dimensions: {
         width: { type: Number, default: 60 },
-        height: { type: Number, default: 30 },
+        height: { type: Number, default: 90 },
     },
+    realDimensions: {
+        length: { type: Number, default: 500 }, // cm
+        width: { type: Number, default: 250 },  // cm
+    },
+    clearance: { type: Number, default: 30 }, // cm
     rotation: { type: Number, default: 0 },
     row: { type: String, default: 'A' },
     status: { type: String, default: 'available', enum: ['available', 'booked', 'blocked'] },

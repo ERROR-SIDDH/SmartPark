@@ -1,0 +1,22 @@
+
+> parking@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.20.80.194:3000
+- Environments: .env
+
+✓ Starting...
+✓ Ready in 437ms
+ GET /admin/dashboard 200 in 2.2s (compile: 2.0s, render: 173ms)
+ GET /login 200 in 2.2s (compile: 2.1s, render: 139ms)
+ GET /admin/parking 200 in 2.2s (compile: 2.2s, render: 53ms)
+(node:110782) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"employeeCode":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:110782) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"email":1} for model "User". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+ GET /api/parking 200 in 840ms (compile: 275ms, render: 565ms)
+ GET /api/parking 200 in 100ms (compile: 1422µs, render: 98ms)
+ GET /api/analytics 200 in 1441ms (compile: 361ms, render: 1079ms)
+ GET /api/analytics 200 in 328ms (compile: 2ms, render: 326ms)
+ GET /employee-login 404 in 243ms (compile: 199ms, render: 44ms)

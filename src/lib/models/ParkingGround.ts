@@ -1,5 +1,13 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IDrawingShape {
+    type: 'line' | 'rect' | 'arc' | 'freehand';
+    points: number[]; // [x1,y1, x2,y2, ...] for line/freehand, [x,y,w,h] for rect, [cx,cy,r,startAngle,endAngle] for arc
+    color: string;
+    lineWidth: number;
+    fill?: string;
+}
+
 export interface IParkingGround extends Document {
     name: string;
     address: string;
@@ -7,13 +15,22 @@ export interface IParkingGround extends Document {
         type: 'Point';
         coordinates: [number, number]; // [longitude, latitude]
     };
-    layoutImage: string; // path to uploaded PNG
+    layoutImage: string; // draft reference image (can be removed)
+    layoutDrawing: IDrawingShape[]; // vector drawing data
     totalCapacity: number;
     allowedVehicleTypes: string[];
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
+
+const DrawingShapeSchema = new Schema({
+    type: { type: String, enum: ['line', 'rect', 'arc', 'freehand'], required: true },
+    points: [{ type: Number }],
+    color: { type: String, default: '#ffffff' },
+    lineWidth: { type: Number, default: 2 },
+    fill: { type: String, default: '' },
+}, { _id: false });
 
 const ParkingGroundSchema = new Schema<IParkingGround>({
     name: { type: String, required: true },
@@ -23,6 +40,7 @@ const ParkingGroundSchema = new Schema<IParkingGround>({
         coordinates: { type: [Number], required: true }, // [lng, lat]
     },
     layoutImage: { type: String, default: '' },
+    layoutDrawing: { type: [DrawingShapeSchema], default: [] },
     totalCapacity: { type: Number, default: 0 },
     allowedVehicleTypes: [{ type: String, enum: ['car', 'bike', 'pickup', 'ev'] }],
     isActive: { type: Boolean, default: true },
