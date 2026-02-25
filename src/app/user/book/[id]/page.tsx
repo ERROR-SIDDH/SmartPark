@@ -113,10 +113,11 @@ export default function BookSlotPage() {
             fetch("/api/vehicles", { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
         ]).then(([g, v]) => {
             setGround(g);
-            setVehicles(v);
-            const def = v.find((ve: Vehicle) => ve.isDefault);
+            const vArr = Array.isArray(v) ? v : [];
+            setVehicles(vArr);
+            const def = vArr.find((ve: Vehicle) => ve.isDefault);
             if (def) setSelectedVehicle(def._id);
-            else if (v.length > 0) setSelectedVehicle(v[0]._id);
+            else if (vArr.length > 0) setSelectedVehicle(vArr[0]._id);
             setLoading(false);
         });
     }, [id, token]);

@@ -40,7 +40,8 @@ export default function SearchPage() {
         const res = await fetch(`/api/parking?${params}`, {
             headers: { Authorization: `Bearer ${token}` },
         });
-        setResults(await res.json());
+        const data = await res.json();
+        setResults(Array.isArray(data) ? data : []);
         setLoading(false);
     };
 
@@ -59,7 +60,8 @@ export default function SearchPage() {
                 const res = await fetch(`/api/parking/nearby?${params}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                setResults(await res.json());
+                const data = await res.json();
+                setResults(Array.isArray(data) ? data : []);
                 setLoading(false);
                 setLocating(false);
             },
