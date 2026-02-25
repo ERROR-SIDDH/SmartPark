@@ -36,6 +36,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         if (body.allowedVehicleTypes) updateData.allowedVehicleTypes = body.allowedVehicleTypes;
         if (body.layoutImage !== undefined) updateData.layoutImage = body.layoutImage;
         if (body.layoutDrawing !== undefined) updateData.layoutDrawing = body.layoutDrawing;
+        if (body.entryTimeWindow !== undefined) updateData.entryTimeWindow = body.entryTimeWindow;
 
         const ground = await ParkingGround.findByIdAndUpdate(id, updateData, { new: true });
         if (!ground) return NextResponse.json({ error: 'Not found' }, { status: 404 });

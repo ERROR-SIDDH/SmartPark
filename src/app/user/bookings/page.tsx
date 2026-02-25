@@ -5,8 +5,9 @@ import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { QRCodeSVG } from "qrcode.react";
 import {
-    CalendarRange, MapPin, Clock, Loader2, X, RefreshCw, Car,
+    CalendarRange, MapPin, Clock, Loader2, X, Car, QrCode, CheckCircle, LogIn, LogOut as LogOutIcon,
 } from "lucide-react";
 
 interface Booking {
@@ -14,6 +15,9 @@ interface Booking {
     startTime: string;
     endTime: string;
     status: string;
+    qrToken?: string;
+    checkedIn?: string | null;
+    checkedOut?: string | null;
     createdAt: string;
     parkingGroundId: { _id: string; name: string; address: string } | null;
     slotId: { slotNumber: string; vehicleType: string } | null;
@@ -26,6 +30,7 @@ export default function BookingsPage() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("");
     const [acting, setActing] = useState("");
+    const [qrModal, setQrModal] = useState<Booking | null>(null);
 
     const fetchBookings = () => {
         const params = filter ? `?status=${filter}` : "";
@@ -104,6 +109,16 @@ export default function BookingsPage() {
                                             <div className="flex items-center gap-2 mb-1">
                                                 <h3 className="font-semibold">{b.parkingGroundId?.name || "Parking Ground"}</h3>
                                                 <Badge variant={statusVariants[b.status] || "secondary"} className="capitalize">{b.status}</Badge>
+                                                {b.checkedIn && !b.checkedOut && (
+                                                    <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px]">
+                                                        <LogIn className="h-2.5 w-2.5 mr-1" /> Checked In
+                                                    </Badge>
+                                                )}
+                                                {b.checkedOut && (
+                                                    <Badge variant="outline" className="text-muted-foreground text-[10px]">
+                                                        <LogOutIcon className="h-2.5 w-2.5 mr-1" /> Checked Out
+                                                    </Badge>
+                                                )}
                                             </div>
                                             <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
                                                 <MapPin className="h-3 w-3" /> {b.parkingGroundId?.address || "—"}
@@ -124,16 +139,93 @@ export default function BookingsPage() {
                                         </div>
                                     </div>
 
-                                    {b.status === "active" && (
-                                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => cancelBooking(b._id)} disabled={acting === b._id}>
-                                            {acting === b._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                                            Cancel
-                                        </Button>
-                                    )}
+                                    <div className="flex flex-col gap-1.5">
+                                        {/* QR Code Button — only for active bookings that haven't checked out */}
+                                        {b.status === "active" && b.qrToken && !b.checkedOut && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-primary/30 text-primary hover:bg-primary/10"
+                                                onClick={() => setQrModal(b)}
+                                            >
+                                                <QrCode className="h-4 w-4 mr-1" /> Show QR
+                                            </Button>
+                                        )}
+                                        {b.status === "active" && (
+                                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => cancelBooking(b._id)} disabled={acting === b._id}>
+                                                {acting === b._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                                                Cancel
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
                     ))}
+                </div>
+            )}
+
+            {/* QR Code Modal */}
+            {qrModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setQrModal(null)}>
+                    <div className="bg-card border border-border/50 rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="text-center mb-6">
+                            <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                                <QrCode className="h-7 w-7 text-primary" />
+                            </div>
+                            <h2 className="text-xl font-bold">Parking QR Pass</h2>
+                            <p className="text-sm text-muted-foreground mt-1">Show this to the parking attendant</p>
+                        </div>
+
+                        {/* QR Code */}
+                        <div className="bg-white rounded-xl p-6 mb-6 flex justify-center">
+                            <QRCodeSVG
+                                value={qrModal.qrToken || ""}
+                                size={220}
+                                level="H"
+                                includeMargin={false}
+                            />
+                        </div>
+
+                        {/* Booking Details */}
+                        <div className="space-y-2 text-sm mb-6">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Location</span>
+                                <span className="font-medium">{qrModal.parkingGroundId?.name}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Slot</span>
+                                <span className="font-medium">{qrModal.slotId?.slotNumber}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Vehicle</span>
+                                <span className="font-medium">{qrModal.vehicleId?.vehicleNumber}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Date</span>
+                                <span className="font-medium">{new Date(qrModal.startTime).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Time</span>
+                                <span className="font-medium">
+                                    {new Date(qrModal.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} — {new Date(qrModal.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                            </div>
+                            {qrModal.checkedIn && (
+                                <div className="flex justify-between text-emerald-500">
+                                    <span>Checked In</span>
+                                    <span className="font-medium flex items-center gap-1">
+                                        <CheckCircle className="h-3.5 w-3.5" />
+                                        {new Date(qrModal.checkedIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        <Button className="w-full" variant="outline" onClick={() => setQrModal(null)}>
+                            Close
+                        </Button>
+                    </div>
                 </div>
             )}
         </div>

@@ -19,6 +19,7 @@ export interface IParkingGround extends Document {
     layoutDrawing: IDrawingShape[]; // vector drawing data
     totalCapacity: number;
     allowedVehicleTypes: string[];
+    entryTimeWindow: number; // minutes before booking start that entry is allowed
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -43,6 +44,7 @@ const ParkingGroundSchema = new Schema<IParkingGround>({
     layoutDrawing: { type: [DrawingShapeSchema], default: [] },
     totalCapacity: { type: Number, default: 0 },
     allowedVehicleTypes: [{ type: String, enum: ['car', 'bike', 'pickup', 'ev'] }],
+    entryTimeWindow: { type: Number, default: 15 }, // minutes before booking start
     isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 

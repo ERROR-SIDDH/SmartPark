@@ -8,12 +8,13 @@ import { useThemeStore } from "@/store/themeStore";
 import { Button } from "@/components/ui/button";
 import {
     LayoutDashboard, ParkingSquare, Users, BarChart3,
-    LogOut, Sun, Moon, Car, ChevronRight, Loader2,
+    LogOut, Sun, Moon, Car, ChevronRight, Loader2, ScanLine,
 } from "lucide-react";
 
 const navItems = [
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/parking", label: "Parking Grounds", icon: ParkingSquare },
+    { href: "/admin/scanner", label: "QR Scanner", icon: ScanLine },
     { href: "/admin/users", label: "User Management", icon: Users },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
 ];

@@ -27,14 +27,9 @@ interface SlotData {
 interface DrawingShape {
     id: string;
     type: "line" | "rect" | "arc";
+    points: number[];
     color: string;
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-    rotation?: number;
-    startAngle?: number;
-    endAngle?: number;
+    lineWidth: number;
 }
 
 interface ParkingGround {
@@ -82,8 +77,8 @@ export default function BookSlotPage() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [booking, setBooking] = useState(false);
     const [booked, setBooked] = useState(false);
-    const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
     const [loading, setLoading] = useState(true);
+    const [bookedSlotIds, setBookedSlotIds] = useState<Set<string>>(new Set());
     const [sizeError, setSizeError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -96,8 +91,14 @@ export default function BookSlotPage() {
             const clr = selectedSlot.clearance || 0;
             const reqL = v.dimensions.length + clr;
             const reqW = v.dimensions.width + clr;
-            if (reqL > selectedSlot.realDimensions.length || reqW > selectedSlot.realDimensions.width) {
-                setSizeError(`Vehicle + clearance (${reqL}x${reqW}cm) doesn't fit in slot (${selectedSlot.realDimensions.length}x${selectedSlot.realDimensions.width}cm)`);
+            const slotL = selectedSlot.realDimensions.length;
+            const slotW = selectedSlot.realDimensions.width;
+
+            const fitsNormally = reqL <= slotL && reqW <= slotW;
+            const fitsRotated = reqL <= slotW && reqW <= slotL;
+
+            if (!fitsNormally && !fitsRotated) {
+                setSizeError(`Vehicle + clearance (${reqL}x${reqW}cm) doesn't fit in slot (${slotL}x${slotW}cm)`);
             } else {
                 setSizeError(null);
             }
@@ -116,76 +117,191 @@ export default function BookSlotPage() {
             const def = v.find((ve: Vehicle) => ve.isDefault);
             if (def) setSelectedVehicle(def._id);
             else if (v.length > 0) setSelectedVehicle(v[0]._id);
-            if (g.layoutImage) {
-                const img = new Image();
-                img.crossOrigin = "anonymous";
-                img.onload = () => setBgImage(img);
-                img.src = g.layoutImage;
-            }
             setLoading(false);
         });
     }, [id, token]);
+
+    // Fetch bookings for the selected date/time to compute which slots are occupied
+    useEffect(() => {
+        if (!id || !date || !startTime || !endTime) return;
+        const start = new Date(`${date}T${startTime}:00`).toISOString();
+        const end = new Date(`${date}T${endTime}:00`).toISOString();
+        fetch(`/api/bookings/check?parkingGroundId=${id}&startTime=${start}&endTime=${end}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((r) => r.json())
+            .then((data) => {
+                if (Array.isArray(data)) {
+                    setBookedSlotIds(new Set(data.map((b: { slotId: string }) => b.slotId)));
+                }
+            })
+            .catch(() => { });
+    }, [id, token, date, startTime, endTime]);
+
+    // Dynamic canvas sizing via ResizeObserver
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [canvasSize, setCanvasSize] = useState({ w: 800, h: 500 });
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const { width, height } = entry.contentRect;
+                if (width > 0 && height > 0) {
+                    const dpr = window.devicePixelRatio || 1;
+                    setCanvasSize({ w: Math.round(width * dpr), h: Math.round(height * dpr) });
+                }
+            }
+        });
+        observer.observe(container);
+        return () => observer.disconnect();
+    }, []);
+
+    // Compute bounding box of all content
+    const getContentBounds = useCallback(() => {
+        if (!ground) return null;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let hasElements = false;
+
+        if (ground.slots?.length) {
+            ground.slots.forEach(s => {
+                hasElements = true;
+                minX = Math.min(minX, s.position.x);
+                minY = Math.min(minY, s.position.y);
+                maxX = Math.max(maxX, s.position.x + s.dimensions.width);
+                maxY = Math.max(maxY, s.position.y + s.dimensions.height);
+            });
+        }
+
+        if (ground.layoutDrawing?.length) {
+            ground.layoutDrawing.forEach(s => {
+                hasElements = true;
+                const pts = s.points;
+                if (s.type === 'line' || s.type === 'rect') {
+                    if (pts.length >= 4) {
+                        const [x1, y1, x2, y2] = pts;
+                        minX = Math.min(minX, x1, x2);
+                        minY = Math.min(minY, y1, y2);
+                        maxX = Math.max(maxX, x1, x2);
+                        maxY = Math.max(maxY, y1, y2);
+                    }
+                } else if (s.type === 'arc') {
+                    if (pts.length >= 3) {
+                        const [cx, cy, r] = pts;
+                        minX = Math.min(minX, cx - r);
+                        minY = Math.min(minY, cy - r);
+                        maxX = Math.max(maxX, cx + r);
+                        maxY = Math.max(maxY, cy + r);
+                    }
+                }
+            });
+        }
+
+        if (!hasElements) return null;
+        return { minX, minY, maxX, maxY };
+    }, [ground]);
+
+    // Compute the transform to fit all content in the canvas
+    const getViewportTransform = useCallback(() => {
+        const bounds = getContentBounds();
+        if (!bounds) return { scale: 1, offsetX: 0, offsetY: 0 };
+
+        const { minX, minY, maxX, maxY } = bounds;
+        const contentW = maxX - minX;
+        const contentH = maxY - minY;
+
+        const padding = 40;
+        const availW = canvasSize.w - padding * 2;
+        const availH = canvasSize.h - padding * 2;
+
+        const scale = Math.min(availW / (contentW || 1), availH / (contentH || 1));
+
+        const centerX = minX + contentW / 2;
+        const centerY = minY + contentH / 2;
+
+        const offsetX = canvasSize.w / 2 - centerX * scale;
+        const offsetY = canvasSize.h / 2 - centerY * scale;
+
+        return { scale, offsetX, offsetY };
+    }, [getContentBounds, canvasSize]);
 
     // Draw
     const drawCanvas = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas || !ground) return;
+        canvas.width = canvasSize.w;
+        canvas.height = canvasSize.h;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvasSize.w, canvasSize.h);
 
-        if (bgImage) {
-            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-        } else {
-            ctx.fillStyle = "#1a1a2e";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = "#ffffff10";
-            for (let x = 0; x < canvas.width; x += 30) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-            }
-            for (let y = 0; y < canvas.height; y += 30) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-            }
+        // Background
+        ctx.fillStyle = "#1a1a2e";
+        ctx.fillRect(0, 0, canvasSize.w, canvasSize.h);
+        ctx.strokeStyle = "#ffffff10";
+        const gridStep = 30;
+        for (let x = 0; x < canvasSize.w; x += gridStep) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvasSize.h); ctx.stroke();
         }
+        for (let y = 0; y < canvasSize.h; y += gridStep) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvasSize.w, y); ctx.stroke();
+        }
+
+        const { scale, offsetX, offsetY } = getViewportTransform();
+
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+        ctx.scale(scale, scale);
 
         // Draw architectural shapes
         if (ground.layoutDrawing) {
             ground.layoutDrawing.forEach(shape => {
                 ctx.save();
                 ctx.strokeStyle = shape.color;
-                ctx.lineWidth = 3;
-                if (shape.type === "line") {
+                ctx.lineWidth = (shape.lineWidth || 2) / scale;
+                const pts = shape.points;
+                if (shape.type === "line" && pts.length >= 4) {
                     ctx.beginPath();
-                    ctx.moveTo(shape.x, shape.y);
-                    ctx.lineTo(shape.x + shape.w, shape.y + shape.h);
+                    ctx.moveTo(pts[0], pts[1]);
+                    ctx.lineTo(pts[2], pts[3]);
                     ctx.stroke();
-                } else if (shape.type === "rect") {
-                    ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+                } else if (shape.type === "rect" && pts.length >= 4) {
+                    const [x1, y1, x2, y2] = pts;
+                    const rx = Math.min(x1, x2);
+                    const ry = Math.min(y1, y2);
+                    const rw = Math.abs(x2 - x1);
+                    const rh = Math.abs(y2 - y1);
+                    ctx.strokeRect(rx, ry, rw, rh);
                     ctx.fillStyle = shape.color + "20";
-                    ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
-                } else if (shape.type === "arc") {
+                    ctx.fillRect(rx, ry, rw, rh);
+                } else if (shape.type === "arc" && pts.length >= 3) {
                     ctx.beginPath();
-                    ctx.arc(shape.x, shape.y, Math.abs(shape.w), shape.startAngle || 0, shape.endAngle || Math.PI, false);
+                    ctx.arc(pts[0], pts[1], pts[2], 0, Math.PI, false);
                     ctx.stroke();
                 }
                 ctx.restore();
             });
         }
 
+        // Draw slots
         ground.slots?.forEach((slot) => {
             ctx.save();
             ctx.translate(slot.position.x + slot.dimensions.width / 2, slot.position.y + slot.dimensions.height / 2);
             ctx.rotate((slot.rotation * Math.PI) / 180);
 
             const isSelected = selectedSlot?._id === slot._id;
-            const isAvailable = slot.status === "available";
+            const isBookedNow = bookedSlotIds.has(slot._id);
+            const isBlocked = slot.status === "blocked";
+            const isAvailable = !isBookedNow && !isBlocked;
+            const effectiveStatus = isBlocked ? "blocked" : isBookedNow ? "booked" : "available";
             const color = TYPE_COLORS[slot.vehicleType] || "#3b82f6";
-            const statusColor = STATUS_COLORS[slot.status];
+            const statusColor = STATUS_COLORS[effectiveStatus];
 
             ctx.fillStyle = isSelected ? `${color}60` : isAvailable ? `${color}25` : `${statusColor}20`;
             ctx.strokeStyle = isSelected ? "#ffffff" : statusColor;
-            ctx.lineWidth = isSelected ? 2.5 : 1.5;
+            ctx.lineWidth = (isSelected ? 2.5 : 1.5) / scale;
 
             const w = slot.dimensions.width;
             const h = slot.dimensions.height;
@@ -195,45 +311,71 @@ export default function BookSlotPage() {
             // Status dot
             ctx.fillStyle = statusColor;
             ctx.beginPath();
-            ctx.arc(w / 2 - 5, -h / 2 + 5, 3, 0, Math.PI * 2);
+            ctx.arc(w / 2 - 6, -h / 2 + 6, 4 / scale, 0, Math.PI * 2);
             ctx.fill();
 
             // Label
             ctx.fillStyle = "#fff";
-            ctx.font = "bold 10px sans-serif";
+            const fontSize = Math.max(10, 12 / scale);
+            ctx.font = `bold ${fontSize}px sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(slot.slotNumber, 0, 0);
+            ctx.fillText(slot.slotNumber, 0, -6);
 
-            // Pointer cursor hint for available
+            // Vehicle type label
+            ctx.fillStyle = "#ffffff80";
+            ctx.font = `${Math.max(8, 9 / scale)}px sans-serif`;
+            ctx.fillText(slot.vehicleType.toUpperCase(), 0, 8);
+
+            // Selection highlight
             if (isAvailable && isSelected) {
                 ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = 1;
-                ctx.setLineDash([3, 3]);
-                ctx.strokeRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6);
+                ctx.lineWidth = 1.5 / scale;
+                ctx.setLineDash([4 / scale, 4 / scale]);
+                ctx.strokeRect(-w / 2 - 4 / scale, -h / 2 - 4 / scale, w + 8 / scale, h + 8 / scale);
                 ctx.setLineDash([]);
             }
 
             ctx.restore();
         });
-    }, [ground, selectedSlot, bgImage]);
+
+        ctx.restore();
+    }, [ground, selectedSlot, canvasSize, bookedSlotIds, getViewportTransform]);
 
     useEffect(() => { drawCanvas(); }, [drawCanvas]);
 
+    // Convert click pixel coordinate to world coordinate
     const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!ground?.slots) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
 
-        const clicked = ground.slots.find(
-            (s) =>
-                x >= s.position.x && x <= s.position.x + s.dimensions.width &&
-                y >= s.position.y && y <= s.position.y + s.dimensions.height &&
-                s.status === "available"
-        );
+        // Convert from CSS pixels to canvas pixels
+        const cssX = e.clientX - rect.left;
+        const cssY = e.clientY - rect.top;
+        const canvasX = cssX * (canvas.width / rect.width);
+        const canvasY = cssY * (canvas.height / rect.height);
+
+        // Invert the viewport transform to get world coordinates
+        const { scale, offsetX, offsetY } = getViewportTransform();
+        const worldX = (canvasX - offsetX) / scale;
+        const worldY = (canvasY - offsetY) / scale;
+
+        // Hit-test each available slot with rotation-aware bounds
+        const clicked = ground.slots.find((s) => {
+            if (s.status === "blocked" || bookedSlotIds.has(s._id)) return false;
+            const w = s.dimensions.width;
+            const h = s.dimensions.height;
+            const cx = s.position.x + w / 2;
+            const cy = s.position.y + h / 2;
+            const dx = worldX - cx;
+            const dy = worldY - cy;
+            const angle = -(s.rotation * Math.PI) / 180;
+            const rx = dx * Math.cos(angle) - dy * Math.sin(angle);
+            const ry = dx * Math.sin(angle) + dy * Math.cos(angle);
+            return rx >= -w / 2 && rx <= w / 2 && ry >= -h / 2 && ry <= h / 2;
+        });
 
         setSelectedSlot(clicked || null);
     };
@@ -321,13 +463,14 @@ export default function BookSlotPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <canvas
-                            ref={canvasRef}
-                            width={800}
-                            height={500}
-                            className="w-full cursor-pointer"
-                            onClick={handleCanvasClick}
-                        />
+                        <div ref={containerRef} className="w-full" style={{ height: "480px" }}>
+                            <canvas
+                                ref={canvasRef}
+                                className="w-full h-full cursor-pointer block"
+                                style={{ imageRendering: "auto" }}
+                                onClick={handleCanvasClick}
+                            />
+                        </div>
                     </CardContent>
                 </Card>
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import dbConnect from '@/lib/db';
 import Booking from '@/lib/models/Booking';
 import Slot from '@/lib/models/Slot';
@@ -53,13 +54,17 @@ export async function POST(req: NextRequest) {
 
         // Size validation
         if (slot.realDimensions && vehicle.dimensions) {
-            // Check if vehicle fits (requiring clearance on all sides might be too strict, usually it's length + clearance, width + clearance)
-            const requiredLength = vehicle.dimensions.length + slot.clearance;
-            const requiredWidth = vehicle.dimensions.width + slot.clearance;
+            const reqL = vehicle.dimensions.length + slot.clearance;
+            const reqW = vehicle.dimensions.width + slot.clearance;
+            const slotL = slot.realDimensions.length;
+            const slotW = slot.realDimensions.width;
 
-            if (requiredLength > slot.realDimensions.length || requiredWidth > slot.realDimensions.width) {
+            const fitsNormally = reqL <= slotL && reqW <= slotW;
+            const fitsRotated = reqL <= slotW && reqW <= slotL;
+
+            if (!fitsNormally && !fitsRotated) {
                 return NextResponse.json({
-                    error: `Vehicle size (${vehicle.dimensions.length}x${vehicle.dimensions.width}cm) + clearance (${slot.clearance}cm) exceeds slot limits (${slot.realDimensions.length}x${slot.realDimensions.width}cm).`
+                    error: `Vehicle size (${vehicle.dimensions.length}x${vehicle.dimensions.width}cm) + clearance (${slot.clearance}cm) exceeds slot limits (${slotL}x${slotW}cm).`
                 }, { status: 400 });
             }
         }
@@ -80,12 +85,12 @@ export async function POST(req: NextRequest) {
         const booking = await Booking.create({
             ...parsed.data,
             userId: user.id,
+            qrToken: randomUUID(),
             startTime: new Date(startTime),
             endTime: new Date(endTime),
         });
 
-        // Update slot status
-        await Slot.findByIdAndUpdate(slotId, { status: 'booked' });
+        // Slot status is computed dynamically — do not permanently mark as 'booked'
 
         return NextResponse.json(booking, { status: 201 });
     } catch (error: unknown) {
