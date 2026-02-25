@@ -36,7 +36,7 @@ export default function BookingsPage() {
         const params = filter ? `?status=${filter}` : "";
         fetch(`/api/bookings${params}`, { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => r.json())
-            .then(setBookings)
+            .then((data) => setBookings(Array.isArray(data) ? data : []))
             .finally(() => setLoading(false));
     };
 

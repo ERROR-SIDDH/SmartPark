@@ -47,7 +47,7 @@ export default function ParkingGroundsPage() {
     const fetchGrounds = () => {
         fetch("/api/parking", { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => r.json())
-            .then(setGrounds)
+            .then((data) => setGrounds(Array.isArray(data) ? data : []))
             .catch(console.error)
             .finally(() => setLoading(false));
     };

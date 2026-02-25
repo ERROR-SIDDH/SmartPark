@@ -47,7 +47,7 @@ export default function VehiclesPage() {
     const fetchVehicles = () => {
         fetch("/api/vehicles", { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => r.json())
-            .then(setVehicles)
+            .then((data) => setVehicles(Array.isArray(data) ? data : []))
             .finally(() => setLoading(false));
     };
 

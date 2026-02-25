@@ -26,7 +26,7 @@ export default function UserHome() {
     useEffect(() => {
         fetch("/api/bookings?status=active", { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => r.json())
-            .then(setBookings)
+            .then((data) => setBookings(Array.isArray(data) ? data : []))
             .finally(() => setLoading(false));
     }, [token]);
 
