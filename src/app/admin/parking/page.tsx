@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, MapPin, Car, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, MapPin, Car, Loader2, Pencil, Trash2, Clock, Settings2 } from "lucide-react";
 
 interface ParkingGround {
     _id: string;
@@ -20,11 +20,15 @@ interface ParkingGround {
     location: { coordinates: [number, number] };
     totalCapacity: number;
     allowedVehicleTypes: string[];
+    entryTimeWindow: number;
     layoutImage: string;
     slotsAvailable: number;
     totalSlots: number;
     evSlots: number;
 }
+
+type CreateForm = { name: string; address: string; latitude: string; longitude: string; totalCapacity: string; entryTimeWindow: string };
+type EditForm = { name: string; address: string; latitude: string; longitude: string; totalCapacity: string; entryTimeWindow: string };
 
 export default function ParkingGroundsPage() {
     const { token } = useAuthStore();
@@ -32,8 +36,13 @@ export default function ParkingGroundsPage() {
     const [grounds, setGrounds] = useState<ParkingGround[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
-    const [form, setForm] = useState({ name: "", address: "", latitude: "", longitude: "", totalCapacity: "" });
+    const [form, setForm] = useState<CreateForm>({ name: "", address: "", latitude: "", longitude: "", totalCapacity: "", entryTimeWindow: "15" });
     const [saving, setSaving] = useState(false);
+
+    // Edit state
+    const [editGround, setEditGround] = useState<ParkingGround | null>(null);
+    const [editForm, setEditForm] = useState<EditForm>({ name: "", address: "", latitude: "", longitude: "", totalCapacity: "", entryTimeWindow: "15" });
+    const [editSaving, setEditSaving] = useState(false);
 
     const fetchGrounds = () => {
         fetch("/api/parking", { headers: { Authorization: `Bearer ${token}` } })
@@ -57,16 +66,53 @@ export default function ParkingGroundsPage() {
                     latitude: parseFloat(form.latitude),
                     longitude: parseFloat(form.longitude),
                     totalCapacity: parseInt(form.totalCapacity) || 0,
+                    entryTimeWindow: parseInt(form.entryTimeWindow) || 15,
                     allowedVehicleTypes: ["car", "bike", "pickup", "ev"],
                 }),
             });
             if (res.ok) {
                 setShowCreate(false);
-                setForm({ name: "", address: "", latitude: "", longitude: "", totalCapacity: "" });
+                setForm({ name: "", address: "", latitude: "", longitude: "", totalCapacity: "", entryTimeWindow: "15" });
                 fetchGrounds();
             }
         } catch (e) { console.error(e); }
         setSaving(false);
+    };
+
+    const openEdit = (g: ParkingGround) => {
+        setEditGround(g);
+        setEditForm({
+            name: g.name,
+            address: g.address,
+            latitude: String(g.location.coordinates[1]),
+            longitude: String(g.location.coordinates[0]),
+            totalCapacity: String(g.totalCapacity),
+            entryTimeWindow: String(g.entryTimeWindow ?? 15),
+        });
+    };
+
+    const handleEdit = async () => {
+        if (!editGround) return;
+        setEditSaving(true);
+        try {
+            const res = await fetch(`/api/parking/${editGround._id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    name: editForm.name,
+                    address: editForm.address,
+                    latitude: parseFloat(editForm.latitude),
+                    longitude: parseFloat(editForm.longitude),
+                    totalCapacity: parseInt(editForm.totalCapacity) || 0,
+                    entryTimeWindow: parseInt(editForm.entryTimeWindow) || 15,
+                }),
+            });
+            if (res.ok) {
+                setEditGround(null);
+                fetchGrounds();
+            }
+        } catch (e) { console.error(e); }
+        setEditSaving(false);
     };
 
     const handleDelete = async (id: string) => {
@@ -111,7 +157,10 @@ export default function ParkingGroundsPage() {
                                 <div className="flex items-start justify-between">
                                     <CardTitle className="text-lg">{g.name}</CardTitle>
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/admin/parking/${g._id}/editor`)}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(g)} title="Edit Details">
+                                            <Settings2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/admin/parking/${g._id}/editor`)} title="Configure Slots">
                                             <Pencil className="h-3.5 w-3.5" />
                                         </Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(g._id)}>
@@ -133,6 +182,15 @@ export default function ParkingGroundsPage() {
                                     {g.allowedVehicleTypes.map((t) => (
                                         <Badge key={t} variant="outline" className="text-xs capitalize">{t}</Badge>
                                     ))}
+                                </div>
+                                {/* Extra details */}
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1 border-t border-border/30">
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" /> Entry window: <strong>{g.entryTimeWindow ?? 15} min</strong>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <MapPin className="h-3 w-3" /> {g.location.coordinates[1].toFixed(4)}, {g.location.coordinates[0].toFixed(4)}
+                                    </span>
                                 </div>
                                 <Button variant="outline" size="sm" className="w-full" onClick={() => router.push(`/admin/parking/${g._id}/editor`)}>
                                     <Car className="mr-2 h-3.5 w-3.5" /> Configure Slots
@@ -169,9 +227,15 @@ export default function ParkingGroundsPage() {
                                 <Input type="number" step="any" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder="77.5946" />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>Total Capacity</Label>
-                            <Input type="number" value={form.totalCapacity} onChange={(e) => setForm({ ...form, totalCapacity: e.target.value })} placeholder="100" />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Total Capacity</Label>
+                                <Input type="number" value={form.totalCapacity} onChange={(e) => setForm({ ...form, totalCapacity: e.target.value })} placeholder="100" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Entry Time Window (min)</Label>
+                                <Input type="number" value={form.entryTimeWindow} onChange={(e) => setForm({ ...form, entryTimeWindow: e.target.value })} placeholder="15" />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -179,6 +243,54 @@ export default function ParkingGroundsPage() {
                         <Button onClick={handleCreate} disabled={saving} className="bg-gradient-to-r from-primary to-chart-1">
                             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                             Create
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Dialog */}
+            <Dialog open={!!editGround} onOpenChange={(open) => { if (!open) setEditGround(null); }}>
+                <DialogContent className="bg-card backdrop-blur-xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Parking Ground</DialogTitle>
+                        <DialogDescription>Update details for {editGround?.name}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Name</Label>
+                            <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Address</Label>
+                            <Input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Latitude</Label>
+                                <Input type="number" step="any" value={editForm.latitude} onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Longitude</Label>
+                                <Input type="number" step="any" value={editForm.longitude} onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value })} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Total Capacity</Label>
+                                <Input type="number" value={editForm.totalCapacity} onChange={(e) => setEditForm({ ...editForm, totalCapacity: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Entry Time Window (min)</Label>
+                                <Input type="number" value={editForm.entryTimeWindow} onChange={(e) => setEditForm({ ...editForm, entryTimeWindow: e.target.value })} />
+                                <p className="text-[10px] text-muted-foreground">How many minutes before booking start time can employees enter</p>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditGround(null)}>Cancel</Button>
+                        <Button onClick={handleEdit} disabled={editSaving} className="bg-gradient-to-r from-primary to-chart-1">
+                            {editSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Settings2 className="mr-2 h-4 w-4" />}
+                            Save Changes
                         </Button>
                     </DialogFooter>
                 </DialogContent>
