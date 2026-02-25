@@ -441,10 +441,10 @@ export default function BookSlotPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <div>
-                    <h1 className="text-2xl font-bold">{ground?.name}</h1>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" /> {ground?.address}
+                <div className="min-w-0">
+                    <h1 className="text-lg sm:text-2xl font-bold truncate">{ground?.name}</h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 truncate">
+                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" /> {ground?.address}
                     </p>
                 </div>
             </div>
@@ -453,9 +453,9 @@ export default function BookSlotPage() {
                 {/* Slot Map */}
                 <Card className="bg-card/50 backdrop-blur-sm border-border/50 overflow-hidden">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center gap-2">
+                        <CardTitle className="text-sm flex flex-col sm:flex-row items-start sm:items-center gap-2">
                             Select a Slot
-                            <div className="flex gap-2 ml-auto">
+                            <div className="flex gap-2 sm:ml-auto flex-wrap">
                                 <span className="flex items-center gap-1 text-xs"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Available</span>
                                 <span className="flex items-center gap-1 text-xs"><span className="w-2 h-2 rounded-full bg-red-500" /> Booked</span>
                                 <span className="flex items-center gap-1 text-xs"><span className="w-2 h-2 rounded-full bg-gray-500" /> Blocked</span>
@@ -463,7 +463,7 @@ export default function BookSlotPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div ref={containerRef} className="w-full" style={{ height: "480px" }}>
+                        <div ref={containerRef} className="w-full" style={{ height: "min(480px, 60vw)" }}>
                             <canvas
                                 ref={canvasRef}
                                 className="w-full h-full cursor-pointer block"

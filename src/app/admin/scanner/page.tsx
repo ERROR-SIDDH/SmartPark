@@ -41,6 +41,50 @@ export default function ScannerPage() {
     const [scannedToken, setScannedToken] = useState("");
     const scannerContainerRef = useRef<HTMLDivElement>(null);
     const scannerRef = useRef<unknown>(null);
+    const audioCtxRef = useRef<AudioContext | null>(null);
+
+    const getAudioCtx = () => {
+        if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+        return audioCtxRef.current;
+    };
+
+    const playApprovedSound = () => {
+        try {
+            const ctx = getAudioCtx();
+            const now = ctx.currentTime;
+            // Pleasant ascending two-tone chime
+            [523.25, 659.25, 783.99].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.3, now + i * 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.3);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(now + i * 0.12);
+                osc.stop(now + i * 0.12 + 0.3);
+            });
+        } catch { /* audio not available */ }
+    };
+
+    const playDeniedSound = () => {
+        try {
+            const ctx = getAudioCtx();
+            const now = ctx.currentTime;
+            // Harsh descending buzzer
+            [349.23, 261.63].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "square";
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.2, now + i * 0.2);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.2 + 0.25);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(now + i * 0.2);
+                osc.stop(now + i * 0.2 + 0.25);
+            });
+        } catch { /* audio not available */ }
+    };
 
     const stopCamera = useCallback(async () => {
         if (scannerRef.current) {
@@ -64,8 +108,10 @@ export default function ScannerPage() {
             const data = await res.json();
             if (res.ok) {
                 setResult({ type: "success", message: "Booking found! Review details below.", booking: data });
+                playApprovedSound();
             } else {
                 setResult({ type: "error", message: data.error || "QR token not recognized." });
+                playDeniedSound();
             }
         } catch {
             setResult({ type: "error", message: "Network error. Please try again." });
@@ -86,12 +132,14 @@ export default function ScannerPage() {
             const data = await res.json();
             if (res.ok) {
                 setResult({ type: "success", message: data.message, booking: data.booking });
+                playApprovedSound();
             } else {
                 setResult({
                     type: data.booking ? "warning" : "error",
                     message: data.error,
                     booking: data.booking,
                 });
+                playDeniedSound();
             }
         } catch {
             setResult({ type: "error", message: "Network error. Please try again." });
