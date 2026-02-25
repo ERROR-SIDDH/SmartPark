@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Booking from '@/lib/models/Booking';
 import ParkingGround from '@/lib/models/ParkingGround';
+import '@/lib/models/User';   // register schema for populate
+import '@/lib/models/Vehicle'; // register schema for populate
+import '@/lib/models/Slot';    // register schema for populate
 import { requireAuth } from '@/lib/auth';
+import { logError, extractRequestInfo } from '@/lib/errorLogger';
 
 // Admin scans a QR code to allow entry or mark exit
 export async function POST(req: NextRequest) {
@@ -104,6 +108,14 @@ export async function POST(req: NextRequest) {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Server error';
         const status = message === 'Unauthorized' || message === 'Forbidden' ? 403 : 500;
+        if (status === 500) {
+            logError({
+                ...extractRequestInfo(req),
+                message,
+                stack: error instanceof Error ? error.stack || '' : '',
+                statusCode: status,
+            });
+        }
         return NextResponse.json({ error: message }, { status });
     }
 }

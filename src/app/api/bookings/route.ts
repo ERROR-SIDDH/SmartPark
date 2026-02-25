@@ -4,6 +4,8 @@ import dbConnect from '@/lib/db';
 import Booking from '@/lib/models/Booking';
 import Slot from '@/lib/models/Slot';
 import Vehicle from '@/lib/models/Vehicle';
+import '@/lib/models/ParkingGround'; // register for populate
+import '@/lib/models/User';          // register for populate
 import { requireAuth, authenticateRequest } from '@/lib/auth';
 import { bookingSchema } from '@/lib/validations';
 
