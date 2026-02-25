@@ -63,12 +63,12 @@ export default function BookingsPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold">My Bookings</h1>
-                <p className="text-sm text-muted-foreground mt-1">View and manage your parking bookings</p>
+                <h1 className="text-xl sm:text-2xl font-bold">My Bookings</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">View and manage your parking bookings</p>
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
                 {[
                     { value: "", label: "All" },
                     { value: "active", label: "Active" },
@@ -97,33 +97,33 @@ export default function BookingsPage() {
                 <div className="space-y-3">
                     {bookings.map((b) => (
                         <Card key={b._id} className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/10 transition-all">
-                            <CardContent className="p-5">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex gap-4 flex-1">
-                                        <div className={`h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0 ${b.status === "active" ? "bg-emerald-500/10" : b.status === "cancelled" ? "bg-red-500/10" : "bg-muted"
+                            <CardContent className="p-4 sm:p-5">
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                                    <div className="flex gap-3 sm:gap-4 flex-1 min-w-0">
+                                        <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center flex-shrink-0 ${b.status === "active" ? "bg-emerald-500/10" : b.status === "cancelled" ? "bg-red-500/10" : "bg-muted"
                                             }`}>
-                                            <MapPin className={`h-5 w-5 ${b.status === "active" ? "text-emerald-500" : b.status === "cancelled" ? "text-red-400" : "text-muted-foreground"
+                                            <MapPin className={`h-4 w-4 sm:h-5 sm:w-5 ${b.status === "active" ? "text-emerald-500" : b.status === "cancelled" ? "text-red-400" : "text-muted-foreground"
                                                 }`} />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="font-semibold">{b.parkingGroundId?.name || "Parking Ground"}</h3>
-                                                <Badge variant={statusVariants[b.status] || "secondary"} className="capitalize">{b.status}</Badge>
+                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                <h3 className="font-semibold text-sm sm:text-base truncate">{b.parkingGroundId?.name || "Parking Ground"}</h3>
+                                                <Badge variant={statusVariants[b.status] || "secondary"} className="capitalize text-[10px]">{b.status}</Badge>
                                                 {b.checkedIn && !b.checkedOut && (
-                                                    <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px]">
+                                                    <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px] hidden sm:flex">
                                                         <LogIn className="h-2.5 w-2.5 mr-1" /> Checked In
                                                     </Badge>
                                                 )}
                                                 {b.checkedOut && (
-                                                    <Badge variant="outline" className="text-muted-foreground text-[10px]">
+                                                    <Badge variant="outline" className="text-muted-foreground text-[10px] hidden sm:flex">
                                                         <LogOutIcon className="h-2.5 w-2.5 mr-1" /> Checked Out
                                                     </Badge>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
-                                                <MapPin className="h-3 w-3" /> {b.parkingGroundId?.address || "—"}
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2 truncate">
+                                                <MapPin className="h-3 w-3 flex-shrink-0" /> {b.parkingGroundId?.address || "—"}
                                             </p>
-                                            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                                            <div className="flex flex-wrap gap-2 sm:gap-3 text-xs text-muted-foreground">
                                                 <span className="flex items-center gap-1">
                                                     <Car className="h-3 w-3" />
                                                     Slot: <strong>{b.slotId?.slotNumber || "—"}</strong>
@@ -139,7 +139,7 @@ export default function BookingsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-1.5">
+                                    <div className="flex sm:flex-col gap-1.5 self-end sm:self-start">
                                         {/* QR Code Button — only for active bookings that haven't checked out */}
                                         {b.status === "active" && b.qrToken && !b.checkedOut && (
                                             <Button
@@ -178,12 +178,13 @@ export default function BookingsPage() {
                         </div>
 
                         {/* QR Code */}
-                        <div className="bg-white rounded-xl p-6 mb-6 flex justify-center">
+                        <div className="bg-white rounded-xl p-4 sm:p-6 mb-6 flex justify-center">
                             <QRCodeSVG
                                 value={qrModal.qrToken || ""}
-                                size={220}
+                                size={180}
                                 level="H"
                                 includeMargin={false}
+                                className="w-full max-w-[220px] h-auto"
                             />
                         </div>
 

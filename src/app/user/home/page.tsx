@@ -35,10 +35,10 @@ export default function UserHome() {
             {/* Welcome */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-chart-2/20 via-primary/10 to-chart-1/20 border border-border/30 p-8">
                 <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
-                <h1 className="text-3xl font-bold tracking-tight relative">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight relative">
                     Welcome back, <span className="bg-gradient-to-r from-chart-2 to-primary bg-clip-text text-transparent">{user?.name?.split(" ")[0]}</span> 👋
                 </h1>
-                <p className="text-muted-foreground mt-2 relative">
+                <p className="text-sm text-muted-foreground mt-2 relative">
                     {bookings.length > 0 ? `You have ${bookings.length} active booking(s)` : "Ready to find a parking spot?"}
                 </p>
             </div>
@@ -52,8 +52,8 @@ export default function UserHome() {
                 ].map((a, i) => (
                     <Card key={i} className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/20 transition-all cursor-pointer group" onClick={() => router.push(a.href)}>
                         <CardContent className="p-6">
-                            <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${a.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                                <a.icon className="h-6 w-6 text-white" />
+                            <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br ${a.gradient} flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform`}>
+                                <a.icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                             </div>
                             <h3 className="font-semibold mb-1">{a.title}</h3>
                             <p className="text-sm text-muted-foreground flex items-center gap-1">
