@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-    QrCode, Search, User, MapPin, Car, Bike, Zap, Truck,
-    ArrowRight, ArrowLeft, Loader2, CheckCircle, Clock
+    QrCode, User, MapPin, Car, Bike, Zap, Truck,
+    ArrowRight, ArrowLeft, Loader2, CheckCircle, Clock, Camera, CameraOff, KeyboardIcon
 } from "lucide-react";
-import { Html5QrcodeScanner } from "html5-qrcode";
 
 const VEHICLE_TYPES = [
     { id: 'car', name: 'Car', icon: Car, color: 'text-blue-500', bg: 'bg-blue-500/10' },
@@ -26,15 +25,17 @@ export default function SpotAllocationPage() {
 
     // Form state
     const [employeeCode, setEmployeeCode] = useState("");
+    const [employeeDetails, setEmployeeDetails] = useState<{ name: string; department: string } | null>(null);
     const [selectedGround, setSelectedGround] = useState("");
     const [selectedType, setSelectedType] = useState("");
     const [endTime, setEndTime] = useState("");
 
     const [loading, setLoading] = useState(false);
+    const [verifying, setVerifying] = useState(false);
     const [scanning, setScanning] = useState(false);
     const [result, setResult] = useState<any>(null);
 
-    const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+    const scannerRef = useRef<any>(null);
 
     useEffect(() => {
         fetch("/api/parking", { headers: { Authorization: `Bearer ${token}` } })
@@ -51,26 +52,74 @@ export default function SpotAllocationPage() {
         setEndTime(d.toISOString().slice(0, 16));
     }, [token]);
 
-    const startScanner = () => {
-        setScanning(true);
-        setTimeout(() => {
-            const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
-            scanner.render((decodedText) => {
-                setEmployeeCode(decodedText);
-                scanner.clear();
-                setScanning(false);
-                setStep(2);
-            }, (error) => { });
-            scannerRef.current = scanner;
-        }, 100);
-    };
-
-    const stopScanner = () => {
+    const stopScanner = useCallback(async () => {
         if (scannerRef.current) {
-            scannerRef.current.clear();
+            try {
+                await scannerRef.current.stop();
+            } catch { /* ignore */ }
             scannerRef.current = null;
         }
         setScanning(false);
+    }, []);
+
+    useEffect(() => {
+        return () => { stopScanner(); };
+    }, [stopScanner]);
+
+    const startScanner = async () => {
+        setScanning(true);
+        try {
+            const { Html5Qrcode } = await import("html5-qrcode");
+            const scannerId = "qr-reader";
+
+            setTimeout(async () => {
+                const el = document.getElementById(scannerId);
+                if (!el) return;
+
+                const scanner = new Html5Qrcode(scannerId);
+                scannerRef.current = scanner;
+
+                await scanner.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => {
+                        stopScanner();
+                        setEmployeeCode(decodedText);
+                        verifyEmployee(decodedText);
+                    },
+                    () => { /* ignore */ }
+                );
+            }, 100);
+        } catch (err) {
+            alert("Camera not found or permission denied.");
+            setScanning(false);
+        }
+    };
+
+    const verifyEmployee = async (code: string) => {
+        if (!code.trim()) return;
+        setVerifying(true);
+        try {
+            const params = new URLSearchParams({ employeeCode: code.trim() });
+            const res = await fetch(`/api/admin/spot-allocation?${params}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || "Failed to verify employee");
+
+            setEmployeeDetails({
+                name: data.name,
+                department: data.department
+            });
+            setStep(2);
+        } catch (err: any) {
+            alert(err.message);
+            // Optionally clear the code
+            if (!scanning) setEmployeeCode("");
+        } finally {
+            setVerifying(false);
+        }
     };
 
     const handleAllocate = async () => {
@@ -104,6 +153,7 @@ export default function SpotAllocationPage() {
     const reset = () => {
         setStep(1);
         setEmployeeCode("");
+        setEmployeeDetails(null);
         setSelectedType("");
         setResult(null);
     };
@@ -132,8 +182,12 @@ export default function SpotAllocationPage() {
                     <CardContent className="space-y-6">
                         {scanning ? (
                             <div className="space-y-4">
-                                <div id="reader" className="overflow-hidden rounded-xl border-2 border-primary/20 bg-black/10" />
-                                <Button variant="outline" className="w-full" onClick={stopScanner}>Cancel Scanning</Button>
+                                <div className="relative rounded-xl overflow-hidden bg-black/50 min-h-[300px]">
+                                    <div id="qr-reader" className="w-full" />
+                                </div>
+                                <Button variant="outline" className="w-full" onClick={stopScanner}>
+                                    <CameraOff className="h-4 w-4 mr-2" /> Cancel Scanning
+                                </Button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 gap-6">
@@ -159,16 +213,21 @@ export default function SpotAllocationPage() {
                                         <Input
                                             placeholder="Employee Code (e.g. EMP123)"
                                             value={employeeCode}
-                                            onChange={(e) => setEmployeeCode(e.target.value)}
+                                            onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') verifyEmployee(employeeCode) }}
                                             className="pl-10 h-12 text-lg font-medium"
                                         />
                                     </div>
                                     <Button
                                         className="w-full h-12 text-lg"
-                                        disabled={!employeeCode.trim()}
-                                        onClick={() => setStep(2)}
+                                        disabled={!employeeCode.trim() || verifying}
+                                        onClick={() => verifyEmployee(employeeCode)}
                                     >
-                                        Next Component <ArrowRight className="h-4 w-4 ml-2" />
+                                        {verifying ? (
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                        ) : (
+                                            <>Verify & Next <ArrowRight className="h-4 w-4 ml-2" /></>
+                                        )}
                                     </Button>
                                 </div>
                             </div>
@@ -184,6 +243,23 @@ export default function SpotAllocationPage() {
                         <CardDescription>Where and what are they parking?</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-8">
+                        {/* Employee Details Card */}
+                        {employeeDetails && (
+                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <User className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-lg">{employeeDetails.name}</h4>
+                                    <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
+                                        <Badge variant="outline" className="text-[10px]">{employeeCode}</Badge>
+                                        <span>{employeeDetails.department || "No Dept"}</span>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="sm" onClick={() => setStep(1)}>Change</Button>
+                            </div>
+                        )}
+
                         {/* Ground Selection */}
                         <div className="space-y-3">
                             <label className="text-sm font-medium flex items-center gap-2">
@@ -255,7 +331,7 @@ export default function SpotAllocationPage() {
                                 className="h-12 text-lg"
                             />
                             <p className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg border border-border/30">
-                                Manual allocation will mark them as <strong>Checked In</strong> immediately.
+                                Manual allocation will mark them as <strong className="text-emerald-500">Checked In</strong> immediately.
                             </p>
                         </div>
 
@@ -282,7 +358,7 @@ export default function SpotAllocationPage() {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-foreground">Spot Allocated!</h2>
-                            <p className="text-muted-foreground mt-1">Allocation successful for <strong>{result.userName}</strong></p>
+                            <p className="text-muted-foreground mt-1">Allocation successful for <strong className="text-foreground">{result.userName}</strong></p>
                         </div>
 
                         <div className="bg-muted/50 rounded-2xl p-6 grid grid-cols-2 gap-4 border border-border/50">
@@ -292,7 +368,7 @@ export default function SpotAllocationPage() {
                             </div>
                             <div className="text-left">
                                 <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Vehicle Info</div>
-                                <div className="text-sm font-semibold truncate">{result.vehicleNumber}</div>
+                                <div className="text-sm font-semibold truncate text-foreground">{result.vehicleNumber}</div>
                                 <div className="text-xs text-muted-foreground capitalize">{selectedType}</div>
                             </div>
                         </div>

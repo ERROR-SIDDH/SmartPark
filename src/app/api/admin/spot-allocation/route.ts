@@ -7,6 +7,30 @@ import Slot from '@/lib/models/Slot';
 import Vehicle from '@/lib/models/Vehicle';
 import { requireAuth } from '@/lib/auth';
 
+export async function GET(req: NextRequest) {
+    try {
+        await dbConnect();
+        requireAuth(req, 'ADMIN');
+
+        const { searchParams } = new URL(req.url);
+        const code = searchParams.get('employeeCode');
+
+        if (!code) return NextResponse.json({ error: 'Employee code required' }, { status: 400 });
+
+        const user = await User.findOne({ employeeCode: code.trim() }).lean();
+        if (!user) return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+
+        return NextResponse.json({
+            name: (user as any).name,
+            department: (user as any).department,
+            employeeCode: (user as any).employeeCode,
+        });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Server error';
+        return NextResponse.json({ error: message }, { status: 500 });
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         await dbConnect();
