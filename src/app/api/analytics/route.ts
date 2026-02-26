@@ -11,16 +11,31 @@ export async function GET(req: NextRequest) {
         await dbConnect();
         requireAuth(req, 'ADMIN');
 
-        const totalUsers = await User.countDocuments();
-        const activeUsers = await User.countDocuments({ isActive: true });
-        const totalGrounds = await ParkingGround.countDocuments({ isActive: true });
-        const totalSlots = await Slot.countDocuments();
-        const availableSlots = await Slot.countDocuments({ status: 'available' });
-        const bookedSlots = await Slot.countDocuments({ status: 'booked' });
-        const blockedSlots = await Slot.countDocuments({ status: 'blocked' });
-        const totalBookings = await Booking.countDocuments();
-        const activeBookings = await Booking.countDocuments({ status: 'active' });
-        const cancelledBookings = await Booking.countDocuments({ status: 'cancelled' });
+        const now = new Date();
+
+        // Count currently active bookings (i.e. bookings whose time window contains "now")
+        const currentlyOccupiedCount = await Booking.countDocuments({
+            status: 'active',
+            startTime: { $lte: now },
+            endTime: { $gte: now },
+        });
+
+        const [
+            totalUsers, activeUsers, totalGrounds, totalSlots,
+            blockedSlots, totalBookings, activeBookings, cancelledBookings, completedBookings,
+        ] = await Promise.all([
+            User.countDocuments(),
+            User.countDocuments({ isActive: true }),
+            ParkingGround.countDocuments({ isActive: true }),
+            Slot.countDocuments(),
+            Slot.countDocuments({ status: 'blocked' }),
+            Booking.countDocuments(),
+            Booking.countDocuments({ status: 'active' }),
+            Booking.countDocuments({ status: 'cancelled' }),
+            Booking.countDocuments({ status: 'completed' }),
+        ]);
+
+        const availableSlots = totalSlots - currentlyOccupiedCount - blockedSlots;
 
         // Bookings by day (last 7 days)
         const sevenDaysAgo = new Date();
@@ -36,33 +51,36 @@ export async function GET(req: NextRequest) {
             { $sort: { _id: 1 } },
         ]);
 
-        // Vehicle type distribution
+        // Vehicle type distribution (from slots)
         const vehicleTypeDist = await Slot.aggregate([
             { $group: { _id: '$vehicleType', count: { $sum: 1 } } },
         ]);
 
-        // Occupancy by parking ground
-        const occupancyByGround = await ParkingGround.aggregate([
-            { $match: { isActive: true } },
+        // Occupancy by parking ground — dynamically computed from active bookings
+        const grounds = await ParkingGround.find({ isActive: true }).select('_id name').lean();
+        const occupancyByGround = await Promise.all(
+            grounds.map(async (g) => {
+                const total = await Slot.countDocuments({ parkingGroundId: g._id });
+                const booked = await Booking.countDocuments({
+                    parkingGroundId: g._id,
+                    status: 'active',
+                    startTime: { $lte: now },
+                    endTime: { $gte: now },
+                });
+                return { name: g.name, total, booked };
+            })
+        );
+
+        // Peak hours (aggregation of booking start times by hour)
+        const peakHours = await Booking.aggregate([
+            { $match: { status: { $in: ['active', 'completed'] } } },
             {
-                $lookup: {
-                    from: 'slots',
-                    localField: '_id',
-                    foreignField: 'parkingGroundId',
-                    as: 'slots',
+                $group: {
+                    _id: { $hour: '$startTime' },
+                    count: { $sum: 1 },
                 },
             },
-            {
-                $project: {
-                    name: 1,
-                    total: { $size: '$slots' },
-                    booked: {
-                        $size: {
-                            $filter: { input: '$slots', cond: { $eq: ['$$this.status', 'booked'] } },
-                        },
-                    },
-                },
-            },
+            { $sort: { _id: 1 } },
         ]);
 
         return NextResponse.json({
@@ -71,14 +89,16 @@ export async function GET(req: NextRequest) {
             totalGrounds,
             totalSlots,
             availableSlots,
-            bookedSlots,
+            bookedSlots: currentlyOccupiedCount,
             blockedSlots,
             totalBookings,
             activeBookings,
             cancelledBookings,
+            completedBookings,
             bookingsByDay,
             vehicleTypeDist,
             occupancyByGround,
+            peakHours,
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Server error';
