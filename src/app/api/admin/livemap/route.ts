@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
         };
 
         return NextResponse.json({
-            ground: { _id: (ground as Record<string, unknown>)._id, name: (ground as Record<string, unknown>).name, address: (ground as Record<string, unknown>).address },
+            ground: { _id: (ground as Record<string, unknown>)._id, name: (ground as Record<string, unknown>).name, address: (ground as Record<string, unknown>).address, layoutDrawing: (ground as Record<string, unknown>).layoutDrawing || [] },
             slots: slotsWithOccupancy,
             stats,
             checkTime: checkTime.toISOString(),
