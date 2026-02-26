@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button";
 import {
     LayoutDashboard, ParkingSquare, Users, BarChart3,
     LogOut, Sun, Moon, Car, ChevronRight, Loader2, ScanLine, Menu, X,
-    AlertTriangle, CalendarRange, FileSpreadsheet, Map,
+    AlertTriangle, CalendarRange, FileSpreadsheet, Map, PlusCircle,
 } from "lucide-react";
 
 const navItems = [
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/bookings", label: "Bookings", icon: CalendarRange },
-    { href: "/admin/parking", label: "Parking Grounds", icon: ParkingSquare },
+    { href: "/admin/spot-allocation", label: "Spot Allocation", icon: PlusCircle },
     { href: "/admin/livemap", label: "Live Map", icon: Map },
     { href: "/admin/vehicles", label: "Vehicle Registry", icon: Car },
     { href: "/admin/scanner", label: "QR Scanner", icon: ScanLine },
