@@ -87,7 +87,6 @@ export default function LiveMapPage() {
             .then((data) => {
                 const arr = Array.isArray(data) ? data : [];
                 setGrounds(arr);
-                if (arr.length > 0 && !selectedGround) setSelectedGround(arr[0]._id);
             });
     }, [token]);
 
@@ -544,11 +543,17 @@ export default function LiveMapPage() {
                         <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-10">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
+                    ) : !selectedGround ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10">
+                            <MapPin className="h-12 w-12 text-muted-foreground mb-3" />
+                            <h3 className="font-semibold mb-1 text-lg">Select a Parking Ground</h3>
+                            <p className="text-sm text-muted-foreground">Please select a parking ground from the top menu to view its live map.</p>
+                        </div>
                     ) : !mapData || (mapData.slots.length === 0 && (!mapData.ground.layoutDrawing || mapData.ground.layoutDrawing.length === 0)) ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm">
                             <MapPin className="h-12 w-12 text-muted-foreground mb-3" />
                             <h3 className="font-semibold mb-1">No Map Data Configured</h3>
-                            <p className="text-sm text-muted-foreground">Select a parking ground or add layout elements in the editor.</p>
+                            <p className="text-sm text-muted-foreground">This parking ground has no slots or layout elements configured.</p>
                         </div>
                     ) : null}
 
