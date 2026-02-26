@@ -29,19 +29,28 @@ interface BookingEntry {
 export default function AdminBookingsPage() {
     const { token } = useAuthStore();
     const [bookings, setBookings] = useState<BookingEntry[]>([]);
+    const [grounds, setGrounds] = useState<{ _id: string; name: string }[]>([]);
     const [total, setTotal] = useState(0);
     const [counts, setCounts] = useState<Record<string, number>>({});
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("");
+    const [selectedGround, setSelectedGround] = useState("");
     const [search, setSearch] = useState("");
     const [acting, setActing] = useState("");
 
-    const fetchBookings = (p = page, s = search) => {
+    useEffect(() => {
+        fetch("/api/parking", { headers: { Authorization: `Bearer ${token}` } })
+            .then((r) => r.json())
+            .then((data) => setGrounds(Array.isArray(data) ? data : []));
+    }, [token]);
+
+    const fetchBookings = (p = page, s = search, g = selectedGround) => {
         setLoading(true);
         const params = new URLSearchParams({ page: String(p), limit: "20" });
         if (filter) params.set("status", filter);
         if (s) params.set("search", s);
+        if (g) params.set("groundId", g);
 
         fetch(`/api/admin/bookings?${params}`, { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => r.json())
@@ -53,7 +62,7 @@ export default function AdminBookingsPage() {
             .finally(() => setLoading(false));
     };
 
-    useEffect(() => { fetchBookings(); }, [token, filter]);
+    useEffect(() => { fetchBookings(1); }, [token, filter, selectedGround]);
 
     const cancelBooking = async (id: string) => {
         if (!confirm("Cancel this booking?")) return;
@@ -92,7 +101,19 @@ export default function AdminBookingsPage() {
                 </div>
             </div>
 
-            {/* Filters */}
+            {/* Ground filter */}
+            <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant={selectedGround === "" ? "default" : "outline"} onClick={() => { setSelectedGround(""); setPage(1); }}>
+                    <MapPin className="h-3.5 w-3.5 mr-1" /> All Grounds
+                </Button>
+                {grounds.map((g) => (
+                    <Button key={g._id} size="sm" variant={selectedGround === g._id ? "default" : "outline"} onClick={() => { setSelectedGround(g._id); setPage(1); }}>
+                        <MapPin className="h-3.5 w-3.5 mr-1" /> {g.name}
+                    </Button>
+                ))}
+            </div>
+
+            {/* Status filters */}
             <div className="flex flex-wrap gap-2">
                 {[
                     { v: "", l: "All", icon: Calendar },
@@ -142,10 +163,10 @@ export default function AdminBookingsPage() {
                                     <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
                                         {/* Status icon */}
                                         <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${b.status === "active" ? "bg-emerald-500/10" :
-                                                b.status === "cancelled" ? "bg-red-500/10" : "bg-muted"
+                                            b.status === "cancelled" ? "bg-red-500/10" : "bg-muted"
                                             }`}>
                                             <StatusIcon className={`h-5 w-5 ${b.status === "active" ? "text-emerald-500" :
-                                                    b.status === "cancelled" ? "text-red-400" : "text-muted-foreground"
+                                                b.status === "cancelled" ? "text-red-400" : "text-muted-foreground"
                                                 }`} />
                                         </div>
 
