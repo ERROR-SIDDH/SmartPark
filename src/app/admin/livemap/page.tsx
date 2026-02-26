@@ -53,6 +53,11 @@ interface ParkingGround {
     address: string;
 }
 
+const getLocalDatetimeString = (date: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 export default function LiveMapPage() {
     const { token } = useAuthStore();
     const [grounds, setGrounds] = useState<ParkingGround[]>([]);
@@ -61,10 +66,7 @@ export default function LiveMapPage() {
     const [loading, setLoading] = useState(false);
     const [hoveredSlot, setHoveredSlot] = useState<SlotData | null>(null);
     const [autoRefresh, setAutoRefresh] = useState(true);
-    const [checkTime, setCheckTime] = useState(() => {
-        const now = new Date();
-        return now.toISOString().slice(0, 16);
-    });
+    const [checkTime, setCheckTime] = useState(() => getLocalDatetimeString(new Date()));
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -106,7 +108,7 @@ export default function LiveMapPage() {
     useEffect(() => {
         if (!autoRefresh) return;
         const iv = setInterval(() => {
-            setCheckTime(new Date().toISOString().slice(0, 16));
+            setCheckTime(getLocalDatetimeString(new Date()));
             fetchMap(); // Also re-fetch the map data to update stats
         }, 10000);
         return () => clearInterval(iv);
@@ -472,7 +474,7 @@ export default function LiveMapPage() {
     };
 
     const setNow = () => {
-        setCheckTime(new Date().toISOString().slice(0, 16));
+        setCheckTime(getLocalDatetimeString(new Date()));
         setAutoRefresh(true);
     };
 

@@ -18,6 +18,11 @@ const VEHICLE_TYPES = [
     { id: 'pickup', name: 'Pickup', icon: Truck, color: 'text-purple-500', bg: 'bg-purple-500/10' },
 ];
 
+const getLocalDatetimeString = (date: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 export default function SpotAllocationPage() {
     const { token } = useAuthStore();
     const [step, setStep] = useState(1);
@@ -49,7 +54,7 @@ export default function SpotAllocationPage() {
         // Default end time to 4 hours from now
         const d = new Date();
         d.setHours(d.getHours() + 4);
-        setEndTime(d.toISOString().slice(0, 16));
+        setEndTime(getLocalDatetimeString(d));
     }, [token]);
 
     const stopScanner = useCallback(async () => {
@@ -320,9 +325,24 @@ export default function SpotAllocationPage() {
                         <CardDescription>When will they leave?</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
+                        {/* Entry & Exit Display */}
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 flex justify-between items-center">
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Entry Time (Now)</p>
+                                <p className="font-semibold text-xl">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{new Date().toLocaleDateString()}</p>
+                            </div>
+                            <ArrowRight className="h-5 w-5 text-muted-foreground/50" />
+                            <div className="text-right">
+                                <p className="text-[10px] text-primary uppercase font-bold tracking-wider mb-1">Estimated Exit</p>
+                                <p className="font-semibold text-xl text-primary">{endTime ? new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "—"}</p>
+                                <p className="text-xs justify-end flex text-primary/70 mt-0.5">{endTime ? new Date(endTime).toLocaleDateString() : ""}</p>
+                            </div>
+                        </div>
+
                         <div className="space-y-3">
                             <label className="text-sm font-medium flex items-center gap-2">
-                                <Clock className="h-3.5 w-3.5 text-primary" /> Till Parking Time
+                                <Clock className="h-3.5 w-3.5 text-primary" /> Edit Exit Time
                             </label>
                             <Input
                                 type="datetime-local"
