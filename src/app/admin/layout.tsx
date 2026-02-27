@@ -16,6 +16,7 @@ const navItems = [
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/bookings", label: "Bookings", icon: CalendarRange },
     { href: "/admin/spot-allocation", label: "Spot Allocation", icon: PlusCircle },
+    { href: "/admin/parking", label: "Parking Grounds", icon: ParkingSquare },
     { href: "/admin/livemap", label: "Live Map", icon: Map },
     { href: "/admin/vehicles", label: "Vehicle Registry", icon: Car },
     { href: "/admin/scanner", label: "QR Scanner", icon: ScanLine },
