@@ -6,14 +6,29 @@ import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, CalendarRange, Car, MapPin, ArrowRight, Loader2, Clock } from "lucide-react";
+import { Search, CalendarRange, Car, MapPin, ArrowRight, Loader2, Clock, Navigation } from "lucide-react";
+
+/** Prefer coordinates for accurate pin; fall back to address. GeoJSON coordinates are [longitude, latitude]. */
+function getDirectionsUrl(ground: { address?: string; location?: { coordinates: [number, number] } } | null | undefined): string | null {
+    if (!ground) return null;
+    const coords = ground.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2 && typeof coords[0] === "number" && typeof coords[1] === "number") {
+        const lat = coords[1];
+        const lng = coords[0];
+        return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    }
+    if (ground.address?.trim()) {
+        return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(ground.address.trim())}`;
+    }
+    return null;
+}
 
 interface Booking {
     _id: string;
     startTime: string;
     endTime: string;
     status: string;
-    parkingGroundId: { name: string; address: string };
+    parkingGroundId: { name: string; address: string; location?: { coordinates: [number, number] } };
     slotId: { slotNumber: string; vehicleType: string };
 }
 
@@ -98,7 +113,21 @@ export default function UserHome() {
                                             </span>
                                         </div>
                                     </div>
-                                    <Badge variant="success">Active</Badge>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        {getDirectionsUrl(b.parkingGroundId) && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-primary/30 text-primary hover:bg-primary/10"
+                                                asChild
+                                            >
+                                                <a href={getDirectionsUrl(b.parkingGroundId)!} target="_blank" rel="noopener noreferrer">
+                                                    <Navigation className="h-4 w-4 mr-1" /> Get directions
+                                                </a>
+                                            </Button>
+                                        )}
+                                        <Badge variant="success">Active</Badge>
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}

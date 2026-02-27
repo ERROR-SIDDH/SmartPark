@@ -8,7 +8,23 @@ import { Badge } from "@/components/ui/badge";
 import { QRCodeSVG } from "qrcode.react";
 import {
     CalendarRange, MapPin, Clock, Loader2, X, Car, QrCode, CheckCircle, LogIn, LogOut as LogOutIcon,
+    Navigation,
 } from "lucide-react";
+
+/** Prefer coordinates for accurate pin; fall back to address. GeoJSON coordinates are [longitude, latitude]. */
+function getDirectionsUrl(ground: { address?: string; location?: { coordinates: [number, number] } } | null | undefined): string | null {
+    if (!ground) return null;
+    const coords = ground.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2 && typeof coords[0] === "number" && typeof coords[1] === "number") {
+        const lat = coords[1];
+        const lng = coords[0];
+        return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    }
+    if (ground.address?.trim()) {
+        return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(ground.address.trim())}`;
+    }
+    return null;
+}
 
 interface Booking {
     _id: string;
@@ -19,7 +35,7 @@ interface Booking {
     checkedIn?: string | null;
     checkedOut?: string | null;
     createdAt: string;
-    parkingGroundId: { _id: string; name: string; address: string } | null;
+    parkingGroundId: { _id: string; name: string; address: string; location?: { coordinates: [number, number] } } | null;
     slotId: { slotNumber: string; vehicleType: string } | null;
     vehicleId: { vehicleNumber: string; vehicleType: string } | null;
 }
@@ -140,6 +156,18 @@ export default function BookingsPage() {
                                     </div>
 
                                     <div className="flex sm:flex-col gap-1.5 self-end sm:self-start">
+                                        {getDirectionsUrl(b.parkingGroundId ?? undefined) && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-primary/30 text-primary hover:bg-primary/10"
+                                                asChild
+                                            >
+                                                <a href={getDirectionsUrl(b.parkingGroundId ?? undefined)!} target="_blank" rel="noopener noreferrer">
+                                                    <Navigation className="h-4 w-4 mr-1" /> Get directions
+                                                </a>
+                                            </Button>
+                                        )}
                                         {/* QR Code Button — only for active bookings that haven't checked out */}
                                         {b.status === "active" && b.qrToken && !b.checkedOut && (
                                             <Button
