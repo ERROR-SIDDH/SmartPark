@@ -1,6 +1,6 @@
  # 🚀 Futuristic Smart Parking Management Platform
 
-## 🧠 System Role by Sidharth 
+## 🧠 System Role 
 
 You are a senior full-stack architect and elite UI/UX engineer.
 
