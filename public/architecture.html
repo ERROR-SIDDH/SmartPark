@@ -57,6 +57,7 @@
             margin-bottom: 1.5rem;
             background: linear-gradient(to right, #fff, var(--primary), var(--secondary));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -280,6 +281,72 @@
             text-transform: uppercase;
             color: var(--text-muted);
         }
+
+        /* Tooltip System */
+        .term {
+            color: var(--primary);
+            border-bottom: 1px dashed var(--primary);
+            cursor: help;
+            position: relative;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .term:hover {
+            color: var(--secondary);
+            border-bottom-color: var(--secondary);
+        }
+
+        .term::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: #1e293b;
+            color: #fff;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            width: 240px;
+            white-space: normal;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            line-height: 1.4;
+            pointer-events: none;
+        }
+
+        .term:hover::after {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Tooltip Arrow */
+        .term::before {
+            content: '';
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .term:hover::before {
+            opacity: 1;
+            visibility: visible;
+        }
     </style>
 </head>
 
@@ -320,14 +387,20 @@
                 allocation models to a dynamic, real-time synchronization framework.
             </p>
             <p>
-                By leveraging a distributed architecture comprising an asynchronous application hub, a document-oriented
-                data repository, and low-latency communication protocols, SmartPark ensures optimal resource
+                By leveraging a distributed architecture comprising an <span class="term"
+                    data-tooltip="Tasks that happen in the background without making the user wait.">asynchronous</span>
+                application hub, a <span class="term"
+                    data-tooltip="A flexible database that stores data in documents, allowing for rapid change.">document-oriented</span>
+                data repository, and <span class="term"
+                    data-tooltip="The tiny delay between a user's action and the system's response.">low-latency</span>
+                communication protocols, SmartPark ensures optimal resource
                 utilization. This report provides an exhaustive breakdown of the system's technical specifications,
                 mathematical foundations, and security protocols.
             </p>
             <div class="highlight-box">
                 <strong>Primary Metric:</strong> Systematic reduction in facility search durations through accurate
-                geospatial predictive modeling and interactive visual coordination.
+                <span class="term" data-tooltip="Data associated with a specific location on Earth.">geospatial</span>
+                predictive modeling and interactive visual coordination.
             </div>
         </section>
 
@@ -421,13 +494,17 @@
 
             <h3>4.1 Frontend Infrastructure</h3>
             <p>
-                The presentation layer is implemented using <strong>React 19</strong> within the <strong>Next.js
-                    16</strong> App Router environment. Key architectural decisions include:
+                The presentation layer is implemented using <span class="term"
+                    data-tooltip="A powerful library for building interactive user interfaces.">React 19</span> within
+                the <span class="term"
+                    data-tooltip="A high-performance framework for building modern web applications.">Next.js
+                    16</span> App Router environment. Key architectural decisions include:
             </p>
             <ul>
                 <li><strong>State Synchronization:</strong> Utilization of `Zustand` for lightweight, non-intrusive
                     global state management.</li>
-                <li><strong>Animation Engine:</strong> Integration of `Framer Motion` to facilitate micro-interactions
+                <li><strong>Animation Engine:</strong> Integration of `Framer Motion` to facilitate <span class="term"
+                        data-tooltip="Subtle animations that enhance the user experience.">micro-interactions</span>
                     and smooth layout transitions.</li>
                 <li><strong>Component Strategy:</strong> Implementation of a modular design system using `Radix UI`
                     primitives and `Tailwind CSS 4` for high-fidelity aesthetics.</li>
@@ -435,11 +512,17 @@
 
             <h3>4.2 Backend Processing Engine</h3>
             <p>
-                The server-side logic resides within Next.js API Routes, providing a unified endpoint architecture. The
+                The server-side logic resides within <span class="term"
+                    data-tooltip="Specific web addresses used by the software to communicate data.">Next.js API
+                    Routes</span>, providing a unified endpoint architecture. The
                 backend is responsible for:
             </p>
             <ul>
-                <li><strong>Request Validation:</strong> Strict schema enforcement using `Zod` to ensure data integrity
+                <li><strong>Request Validation:</strong> Strict <span class="term"
+                        data-tooltip="A blueprint that defines how data must be organized.">schema</span> enforcement
+                    using <span class="term"
+                        data-tooltip="A tool that ensures incoming data is in the correct format.">Zod</span> to ensure
+                    data integrity
                     at the entry point.</li>
                 <li><strong>Asynchronous Coordination:</strong> Managing complex reservation logic and preventing race
                     conditions during peak booking periods.</li>
@@ -497,8 +580,12 @@
             </p>
             <h3>6.1 The Haversine Formula</h3>
             <p>
-                To calculate the "Great-Circle Distance" between the user's current coordinates and the parking
-                facility, SmartPark implements the Haversine formula, accounting for the Earth's curvature.
+                To calculate the "<span class="term"
+                    data-tooltip="The shortest distance between two points on a curved surface like Earth.">Great-Circle
+                    Distance</span>" between the user's current coordinates and the parking
+                facility, SmartPark implements the <span class="term"
+                    data-tooltip="A mathematical formula used to find distances between two points on Earth.">Haversine
+                    formula</span>, accounting for the Earth's curvature.
             </p>
             <pre><code>function haversineDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; // Earth's Radius in km
@@ -513,7 +600,9 @@
 
             <h3>6.2 Vector-to-Physical Mapping</h3>
             <p>
-                The interactive layout editor utilizes an abstract coordinate system. Upon administrative configuration,
+                The interactive layout editor utilizes an <span class="term"
+                    data-tooltip="A coordinate system that describes relative positions rather than fixed ones.">abstract
+                    coordinate system</span>. Upon administrative configuration,
                 these relative coordinates are mapped to physical dimensions, allowing the system to validate if a
                 specific vehicle (e.g., a Pickup Truck) physically fits within the designated slot dimensions.
             </p>
@@ -527,14 +616,19 @@
             </p>
             <h4>7.1 Authentication Architecture</h4>
             <ul>
-                <li><strong>JWT Methodology:</strong> Stateless session management using high-entropy JSON Web Tokens.
+                <li><strong>JWT Methodology:</strong> Stateless session management using high-entropy <span class="term"
+                        data-tooltip="A secure digital passport used to verify identities.">JSON Web Tokens</span>.
                 </li>
-                <li><strong>Credential Hashing:</strong> Passwords are processed using `bcrypt` with a minimum cost
+                <li><strong>Credential Hashing:</strong> Passwords are processed using <span class="term"
+                        data-tooltip="A tool that scrambles passwords to make them unreadable for hackers.">bcrypt</span>
+                    with a minimum cost
                     factor of 12.</li>
                 <li><strong>Token Rotation:</strong> Implementation of refresh token mechanisms to minimize exposure
                     windows and support secure persistent sessions.</li>
             </ul>
-            <h4>7.2 Role-Based Access Control (RBAC)</h4>
+            <h4>7.2 <span class="term"
+                    data-tooltip="A security model where permissions are tied to a user's specific job role.">Role-Based
+                    Access Control (RBAC)</span></h4>
             <p>
                 A strict hierarchical permission model is enforced across all API endpoints:
             </p>
@@ -596,10 +690,14 @@
                 ensure stability under high loads.
             </p>
             <ul>
-                <li><strong>Database Sharding Ready:</strong> The document structure facilitates horizontal scaling of
+                <li><strong>Database Sharding Ready:</strong> The document structure facilitates <span class="term"
+                        data-tooltip="Splitting a database into smaller pieces to handle more users.">horizontal
+                        scaling</span> of
                     the MongoDB cluster as the number of facilities grows.</li>
-                <li><strong>Edge Ready:</strong> The Next.js framework allows for global dissemination via Content
-                    Delivery Networks (CDNs), minimizing latency for geographically distributed teams.</li>
+                <li><strong>Edge Ready:</strong> The Next.js framework allows for global dissemination via <span
+                        class="term"
+                        data-tooltip="A network of servers that delivers content faster by being closer to the user.">Content
+                        Delivery Networks (CDNs)</span>, minimizing latency for geographically distributed teams.</li>
                 <li><strong>Failure Insulation:</strong> Redundant server instances and persistent database connections
                     ensure that the system remains operational even during localized hardware failures.</li>
             </ul>
@@ -622,7 +720,9 @@
                 </div>
             </div>
             <p style="margin-top: 2rem;">
-                Planned enhancements include Computer Vision-based slot monitoring, dynamic demand-based pricing models,
+                Planned enhancements include <span class="term"
+                    data-tooltip="Software that allows computers to 'see' and interpret visual information.">Computer
+                    Vision-based</span> slot monitoring, dynamic demand-based pricing models,
                 and deep integration with EV charging management platforms.
             </p>
         </section>
