@@ -34,7 +34,7 @@ SmartPark is a sophisticated, real-time coordination solution for high-density c
 
 For a detailed analysis of the system architecture and its operational vision, refer to the following internal publications:
 
-1. **[Technical Architecture Report](architecture.html](https://error-siddh.github.io/SmartPark/architecture.html))**: An exhaustive deep-dive into the system's infrastructure, geospatial mathematics (Haversine formula), and security protocols.
+1. **[Technical Architecture Report](https://error-siddh.github.io/SmartPark/architecture.html)**: An exhaustive deep-dive into the system's infrastructure, geospatial mathematics (Haversine formula), and security protocols.
 2. **[Operational Layman Report](https://error-siddh.github.io/SmartPark/layman.html)**: A formal project overview detailing the project's Aim, Strategic Motivation, and Organizational Benefits.
 
 ---
